@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entropy Maze - 熵迷宫</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 标题栏 -->
+        <header class="header">
+            <h1>Entropy Maze · 熵迷宫</h1>
+            <p class="subtitle">点击拾取能量球 → 移动查看各参数变化预览（此时不发生物理过程）→ 再次点击确认执行　｜　<strong>双击某颗球</strong>＝直接让这颗球做功</p>
+
+            <!-- 游戏说明 -->
+            <div class="game-brief">
+                <div class="brief-item brief-goal">
+                    <span class="brief-tag">胜利条件</span>
+                    <p>让<strong>单个能量单元的可用能</strong>尽量大 —— <strong>超过 300 J</strong> 即达标，该读数转为<span class="victory-hint">胜利色</span>，此即本局<strong>成绩</strong>。把它堆成质量大、温差高的一颗，再想「做功」取出多少，是另一回事。</p>
+                </div>
+                <div class="brief-item brief-b">
+                    <span class="brief-tag">代价如何计入</span>
+                    <p>移动要付摩擦，由<strong>蓄能器</strong>支出（不足则无法移动）；合并要付传热熵产，计入<strong>累计熵产、累计㶲损</strong>。二者均非胜负判据，只是绕路与合并的代价参考。</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- 游戏画布 -->
+        <main class="game-container">
+            <div class="canvas-wrapper">
+                <!-- 迷宫本体：画布 + 温度图例 -->
+                <div class="canvas-stage">
+                    <canvas id="gameCanvas" width="728" height="568"></canvas>
+                    <div class="legend">
+                        <span class="legend-label">20°C</span>
+                        <span class="legend-bar"></span>
+                        <span class="legend-label">300°C</span>
+                        <span class="legend-hint">颜色 = 温度（Turbo 多色色标）· 圆面积 = 质量</span>
+                    </div>
+                </div>
+
+                <!-- 储能罐：位于迷宫之外。做功 = 能量飞入；摩擦 = 能量从此飞出 -->
+                <aside class="accumulator-unit" id="energyTank">
+                    <div class="tank-title">蓄能器</div>
+                    <div class="tank-body">
+                        <div class="tank-liquid" id="tankLiquid"></div>
+                        <div class="tank-ticks">
+                            <span></span><span></span><span></span>
+                        </div>
+                    </div>
+                    <div class="tank-value" id="tankValue">500 J</div>
+                    <div class="tank-note">做功收入 · 摩擦支出</div>
+                </aside>
+            </div>
+        </main>
+
+        <!-- 底部面板 -->
+        <footer class="footer">
+            <!-- 统计面板 -->
+            <section class="panel stats-panel">
+                <h3>统计信息</h3>
+                <div class="stats-grid">
+                    <div class="stat-item accent-energy">
+                        <span class="stat-label">总内能</span>
+                        <span class="stat-value" id="totalEnergy">0 J</span>
+                    </div>
+                    <div class="stat-item accent-exergy">
+                        <span class="stat-label">当前可用能</span>
+                        <span class="stat-value" id="currentExergy">0 J</span>
+                    </div>
+                    <div class="stat-item accent-exergy highlight">
+                        <span class="stat-label" title="系统里可用能最大的那个能量单元的可用能 —— 本局成绩与胜利判据">单元可用能</span>
+                        <span class="stat-value" id="unitExergy">0 J</span>
+                    </div>
+                    <div class="stat-item accent-exergy">
+                        <span class="stat-label">可用能峰值</span>
+                        <span class="stat-value" id="maxExergy">0 J</span>
+                    </div>
+                    <div class="stat-item accent-work">
+                        <span class="stat-label" title="只累计能量单元释放的功，不计入摩擦">累计做功</span>
+                        <span class="stat-value" id="workExtracted">0 J</span>
+                    </div>
+                    <div class="stat-item accent-work highlight">
+                        <span class="stat-label" title="初始储能 + 累计做功 − 累计摩擦功；为负时无法移动">蓄能器</span>
+                        <span class="stat-value" id="accumulator">0 J</span>
+                    </div>
+                    <div class="stat-item accent-work">
+                        <span class="stat-label" title="单次做功释放量的最大值 —— 参考值">做功峰值</span>
+                        <span class="stat-value" id="peakWork">0 J</span>
+                    </div>
+                    <div class="stat-item accent-work">
+                        <span class="stat-label" title="参考比值：单次出力占累计做功之比">做功峰值/累计做功</span>
+                        <span class="stat-value" id="peakWorkRatio"></span>
+                    </div>
+                    <div class="stat-item accent-loss">
+                        <span class="stat-label">累计㶲损</span>
+                        <span class="stat-value" id="exergyDestroyed">0 J</span>
+                    </div>
+                    <div class="stat-item accent-entropy">
+                        <span class="stat-label">累计熵产</span>
+                        <span class="stat-value" id="entropyGenerated">0.000 J/K</span>
+                    </div>
+                    <div class="stat-item accent-entropy">
+                        <span class="stat-label">系统熵</span>
+                        <span class="stat-value" id="systemEntropy">0.000 J/K</span>
+                    </div>
+                    <div class="stat-item accent-count">
+                        <span class="stat-label">移动距离</span>
+                        <span class="stat-value" id="travelDistance">0.0 m</span>
+                    </div>
+                    <div class="stat-item accent-count">
+                        <span class="stat-label">合并次数</span>
+                        <span class="stat-value" id="mergeCount">0</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 控制面板 -->
+            <section class="panel control-panel">
+                <h3>控制面板</h3>
+                <div class="control-buttons">
+                    <button id="btnNewGame" class="btn btn-primary">新游戏</button>
+                    <button id="btnReset" class="btn btn-secondary">重置</button>
+                    <button id="btnWork" class="btn btn-work">做功</button>
+                </div>
+
+                <div class="control-sliders">
+                    <div class="slider-group">
+                        <label for="backgroundTemp">环境温度 T₀</label>
+                        <input type="range" id="backgroundTemp" min="0" max="50" value="20">
+                        <span id="backgroundTempValue">20°C</span>
+                    </div>
+                    <div class="slider-group">
+                        <label for="frictionCoeff">摩擦系数 μ</label>
+                        <input type="range" id="frictionCoeff" min="0" max="30" value="15">
+                        <span id="frictionCoeffValue">0.15</span>
+                    </div>
+                    <div class="slider-group">
+                        <label for="accumulatorInitial">蓄能器初值</label>
+                        <input type="range" id="accumulatorInitial" min="0" max="1000" step="10" value="500">
+                        <span id="accumulatorInitialValue">500 J</span>
+                    </div>
+                </div>
+
+                <p class="shortcut-hint">快捷键：N 新游戏 · R 重置 · W 做功 · P/空格 暂停 · Esc 取消拾取<br>
+                    鼠标：单击拾取 / 再次单击确认移动　·　<strong>双击某颗球让它直接做功</strong>（不必是可用能最大的那颗）</p>
+            </section>
+
+            <!-- 页面注释：统计口径 + 各参数定义 -->
+            <div class="page-note">
+                <div class="page-note-body">
+                    <div class="page-note-head">
+                        <span class="page-note-title">注</span>
+                        <span class="page-note-subtitle">
+                            <strong>合并</strong>为有限温差传热；<strong>摩擦</strong>为机械功耗散，其机械能来自系统之外，
+                            不计入累计熵产 / 累计㶲损，也不冲减累计做功，而是从<strong>蓄能器</strong>中支出；
+                            <strong>做功</strong>按可逆释放，不产生熵，释放的功充入蓄能器。
+                        </span>
+                    </div>
+
+                    <dl class="def-grid">
+                        <div class="def-item">
+                            <dt>总内能 U</dt>
+                            <dd><span class="formula">Σmᵢc(Tᵢ − T₀)</span>，以环境为基准的内能；做功后被取出为功并排热，故随之下降</dd>
+                        </div>
+                        <div class="def-item">
+                            <dt>当前可用能 E</dt>
+                            <dd><span class="formula">Σmᵢc[(Tᵢ − T₀) − T₀·ln(Tᵢ/T₀)]</span>，这些球最多还能输出多少功</dd>
+                        </div>
+                        <div class="def-item">
+                            <dt>单元可用能 E₁</dt>
+                            <dd><span class="formula">maxᵢ mᵢc[(Tᵢ − T₀) − T₀·ln(Tᵢ/T₀)]</span>，
+                                单颗能量单元的可用能最大值，也是下一次「做功」能取出多少的上限；
+                                <strong>本局成绩与胜利判据</strong> —— 超过 <span class="formula">300 J</span> 达标，读数<span class="victory-hint">转绿</span></dd>
+                        </div>
+                        <div class="def-item">
+                            <dt>可用能峰值 E_max</dt>
+                            <dd>本局出现过的最高可用能。㶲自发过程只降不升，通常即开局初值</dd>
+                        </div>
+                        <div class="def-item">
+                            <dt>累计做功 W</dt>
+                            <dd><strong>只累计能量单元释放的功</strong>，不含摩擦：绕路再多也不冲减它</dd>
+                        </div>
+                        <div class="def-item">
+                            <dt>蓄能器</dt>
+                            <dd><span class="formula">初始储能 + 累计做功 − 累计摩擦功</span>；初值 <span class="formula">0–1000 J</span> 可调。
+                                <strong>余额不足本次摩擦则无法移动</strong>，须先「做功」补充</dd>
+                        </div>
+                        <div class="def-item">
+                            <dt>做功峰值</dt>
+                            <dd>单次做功释放量的最大值，<strong>参考值</strong>（非判据）：一次「做功」只释放
+                                单元可用能最大的那颗球，故它不会超过「单元可用能」</dd>
+                        </div>
+                        <div class="def-item">
+                            <dt>做功峰值/累计做功</dt>
+                            <dd><span class="formula">峰值 / W × 100%</span>，<strong>参考比值</strong>（非判据）：单次出力占累计做功之比</dd>
+                        </div>
+                        <div class="def-item">
+                            <dt>累计㶲损 I</dt>
+                            <dd>被不可逆性销毁的做功能力，<strong>只统计合并传热</strong> <span class="formula">T₀·ΔS</span>；摩擦不再计入，其代价由净做功承担</dd>
+                        </div>
+                        <div class="def-item">
+                            <dt>累计熵产 ΔS_gen</dt>
+                            <dd><span class="formula">Σ ΔS_merge = Σ mᵢc·ln(T_f/Tᵢ)</span>，<strong>只统计合并传热</strong>；摩擦耗散不计入，只增不减</dd>
+                        </div>
+                        <div class="def-item">
+                            <dt>系统熵 S</dt>
+                            <dd><span class="formula">Σmᵢc·ln(Tᵢ/T₀)</span>，此刻的<strong>存量</strong>而非产出：合并时升、做功时降</dd>
+                        </div>
+                        <div class="def-item">
+                            <dt>移动距离</dt>
+                            <dd>沿通道实际行进米数，摩擦功 <span class="formula">W_f = μmgd</span> 正源于此</dd>
+                        </div>
+                        <div class="def-item">
+                            <dt>合并次数</dt>
+                            <dd>两球接触融合的次数，每次都被有限温差传热征收一笔熵产</dd>
+                        </div>
+                    </dl>
+
+                    <p class="def-note">
+                        恒等关系：<span class="formula">I = T₀ × ΔS_gen</span>（Gouy–Stodola）、
+                        <span class="formula">E = U − T₀·S</span>、
+                        <span class="formula">ΔE = ΔU − T₀·ΔS_sys</span>、
+                        <span class="formula">E₀ − E_now = 累计做功 + I</span>（摩擦已计入净做功，不再出现在此）。
+                        符号：<span class="formula">m</span> 质量 · <span class="formula">c</span> 比热容 ·
+                        <span class="formula">T₀</span> 环境温度 · <span class="formula">μ</span> 摩擦系数。
+                    </p>
+                </div>
+                <p class="page-note-credit">河海大学新能源学院 汪洋教授</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- 依赖顺序：模型 → 网络 → 物理 → 渲染 → 输入 → 界面 → 主控 → 入口 -->
+    <script src="js/block.js"></script>
+    <script src="js/maze.js"></script>
+    <script src="js/corridor.js"></script>
+    <script src="js/physics.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/input.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

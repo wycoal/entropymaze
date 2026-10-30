@@ -1,0 +1,633 @@
+/* ============================================================
+   Entropy Maze — 暗色科技风 / 精密仪器感
+   ============================================================ */
+
+:root {
+    /* 主色 */
+    --c-cyan: #4DD0E1;
+    --c-amber: #FFC14D;
+    --c-blue: #2A9DBF;
+
+    /* 背景 */
+    --bg-deep: #0B0E14;
+    --bg-panel: #141A24;
+    --bg-card: #1B2230;
+
+    /* 文本 */
+    --t-primary: #E6EDF3;
+    --t-muted: #9AA7B8;
+    --t-strong: #FFFFFF;
+
+    /* 功能色 */
+    --f-ok: #3DDC97;
+    --f-danger: #FF5A5F;
+    --f-warn: #FFC14D;
+    --f-violet: #B98CFF;
+
+    --radius: 12px;
+    --radius-sm: 8px;
+    --mono: 'SFMono-Regular', 'Consolas', 'Roboto Mono', monospace;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Noto Sans', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--t-primary);
+    background:
+        radial-gradient(1200px 700px at 20% -10%, rgba(77, 208, 225, 0.10), transparent 60%),
+        radial-gradient(900px 600px at 110% 110%, rgba(185, 140, 255, 0.10), transparent 60%),
+        var(--bg-deep);
+    min-height: 100vh;
+    padding: 24px 20px 40px;
+}
+
+.container {
+    max-width: 1180px;
+    margin: 0 auto;
+    background: linear-gradient(180deg, rgba(27, 34, 48, 0.85), rgba(20, 26, 36, 0.92));
+    border: 1px solid rgba(77, 208, 225, 0.16);
+    border-radius: var(--radius);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+    overflow: hidden;
+    backdrop-filter: blur(6px);
+}
+
+/* ---------------- 标题栏 ---------------- */
+
+.header {
+    padding: 26px 30px 20px;
+    text-align: center;
+    position: relative;
+}
+
+.header h1 {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    background: linear-gradient(92deg, var(--c-cyan) 0%, #A5F3FC 45%, var(--c-amber) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--t-muted);
+}
+
+/* ---------------- 游戏说明 ---------------- */
+
+.game-brief {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 10px;
+    margin-top: 18px;
+    text-align: left;
+}
+
+.brief-item {
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 3px solid var(--c-cyan);
+}
+
+.brief-item p {
+    font-size: 12px;
+    line-height: 1.75;
+    color: rgba(154, 167, 184, 0.85);
+}
+
+.brief-item strong {
+    font-weight: 600;
+    color: var(--t-primary);
+}
+
+.brief-tag {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--c-cyan);
+}
+
+/* 代价参考：琥珀 */
+.brief-b { border-left-color: var(--c-amber); }
+.brief-b .brief-tag { color: var(--c-amber); }
+
+.brief-goal { border-left-color: var(--f-ok); }
+.brief-goal .brief-tag { color: var(--f-ok); }
+
+.header::after {
+    content: '';
+    display: block;
+    height: 1px;
+    margin: 18px auto 0;
+    width: 82%;
+    background: linear-gradient(90deg, transparent, rgba(77, 208, 225, 0.45), transparent);
+    position: relative;
+}
+
+/* ---------------- 画布区 ---------------- */
+
+.game-container {
+    position: relative;
+    padding: 8px 20px 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background:
+        radial-gradient(700px 340px at 50% 40%, rgba(42, 157, 191, 0.10), transparent 70%);
+}
+
+.canvas-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px;
+    border-radius: var(--radius);
+    background: rgba(11, 14, 20, 0.6);
+    border: 1px solid rgba(77, 208, 225, 0.18);
+    box-shadow: 0 0 40px rgba(77, 208, 225, 0.10), 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* 迷宫本体：画布 + 温度图例 */
+.canvas-stage {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+#gameCanvas {
+    display: block;
+    border-radius: var(--radius-sm);
+    max-width: 100%;
+    height: auto;
+    cursor: pointer;
+    touch-action: none;
+}
+
+/* 温度图例 */
+.legend {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--t-muted);
+}
+
+.legend-bar {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+    /* Turbo 色标：与球体取色完全一致（紫→蓝→青→绿→黄→橙→红） */
+    background: linear-gradient(90deg,
+        #30123b, #4145ab, #4675ed, #39a2fc, #1bcfd4, #24eca6,
+        #61fc6c, #a4fc3b, #d1e834, #f3c63a, #fe9b2d, #f36315,
+        #d93806, #b11901, #7a0403);
+    border: 1px solid rgba(154, 167, 184, 0.25);
+}
+
+.legend-hint {
+    margin-left: auto;
+    font-size: 11px;
+    color: rgba(154, 167, 184, 0.75);
+}
+
+/* ---------------- 储能罐（迷宫之外） ---------------- */
+
+.accumulator-unit {
+    flex: 0 0 96px;
+    width: 96px;
+    height: 330px;
+    align-self: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 8px 10px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(180deg, rgba(27, 34, 48, 0.95), rgba(11, 14, 20, 0.95));
+    border: 1px solid rgba(77, 208, 225, 0.28);
+    box-shadow: 0 0 24px rgba(77, 208, 225, 0.12), 0 10px 26px rgba(0, 0, 0, 0.45);
+    transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.tank-title {
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: rgba(77, 208, 225, 0.85);
+}
+
+.tank-body {
+    position: relative;
+    flex: 1;
+    width: 100%;
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(6, 9, 14, 0.9);
+    border: 1px solid rgba(77, 208, 225, 0.25);
+    box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.7);
+}
+
+.tank-liquid {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255, 224, 130, 0.95), rgba(255, 159, 69, 0.9) 55%, rgba(255, 111, 60, 0.88));
+    box-shadow: 0 0 16px rgba(255, 193, 77, 0.55);
+    transition: height 0.18s linear;
+}
+
+.tank-liquid::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: rgba(255, 246, 214, 0.95);
+    box-shadow: 0 0 10px rgba(255, 230, 160, 0.9);
+}
+
+.tank-ticks {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.tank-ticks span {
+    position: absolute;
+    left: 0;
+    width: 30%;
+    height: 1px;
+    background: rgba(154, 167, 184, 0.35);
+}
+.tank-ticks span:nth-child(1) { top: 25%; }
+.tank-ticks span:nth-child(2) { top: 50%; }
+.tank-ticks span:nth-child(3) { top: 75%; }
+
+.tank-value {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--c-amber);
+    font-variant-numeric: tabular-nums;
+}
+
+.tank-value.is-negative {
+    color: var(--f-danger);
+}
+
+.tank-note {
+    font-size: 10px;
+    line-height: 1.4;
+    text-align: center;
+    color: rgba(154, 167, 184, 0.65);
+}
+
+/* 能量流向提示：充入（做功，金）/ 支出（摩擦，红） */
+.accumulator-unit.flow-in {
+    border-color: rgba(255, 193, 77, 0.75);
+    box-shadow: 0 0 28px rgba(255, 193, 77, 0.55), 0 10px 26px rgba(0, 0, 0, 0.45);
+}
+
+.accumulator-unit.flow-out {
+    border-color: rgba(255, 90, 95, 0.7);
+    box-shadow: 0 0 26px rgba(255, 90, 95, 0.5), 0 10px 26px rgba(0, 0, 0, 0.45);
+}
+
+.accumulator-unit.flow-out .tank-body {
+    animation: tankDrain 0.7s ease;
+}
+
+@keyframes tankDrain {
+    0% { box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.7); }
+    40% { box-shadow: inset 0 0 22px rgba(255, 90, 95, 0.45); }
+    100% { box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.7); }
+}
+
+/* ---------------- 底部面板 ---------------- */
+
+.footer {
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    gap: 18px;
+    padding: 20px 24px 26px;
+    border-top: 1px solid rgba(77, 208, 225, 0.12);
+}
+
+.panel {
+    background: var(--bg-card);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-sm);
+    padding: 16px 18px;
+}
+
+.panel h3 {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 14px;
+    color: var(--c-cyan);
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(77, 208, 225, 0.22);
+    letter-spacing: 0.4px;
+}
+
+/* 统计卡片 */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.stat-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px 10px 14px;
+    background: rgba(20, 26, 36, 0.75);
+    border-radius: 6px;
+    border-left: 3px solid var(--t-muted);
+    overflow: hidden;
+}
+
+.stat-item.accent-energy { border-left-color: var(--c-cyan); }
+.stat-item.accent-exergy { border-left-color: var(--c-amber); }
+.stat-item.accent-entropy { border-left-color: var(--f-violet); }
+.stat-item.accent-loss { border-left-color: var(--f-danger); }
+.stat-item.accent-count { border-left-color: var(--c-blue); }
+.stat-item.accent-work { border-left-color: #FF9F45; }
+
+.stat-item.highlight {
+    background: rgba(255, 193, 77, 0.10);
+}
+
+/* 达标：单次做功 ≥ 1200 J —— 胜利色（绿） */
+.stat-item.is-victory {
+    background: rgba(61, 220, 151, 0.12);
+    border-left-color: var(--f-ok);
+    box-shadow: inset 0 0 0 1px rgba(61, 220, 151, 0.22);
+}
+
+.stat-item.is-victory .stat-label,
+.stat-item.is-victory .stat-value {
+    color: var(--f-ok);
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--t-muted);
+    font-weight: 400;
+}
+
+.stat-value {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--t-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- 控制面板 ---------------- */
+
+.control-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.btn {
+    flex: 1;
+    padding: 10px 18px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--c-cyan) 0%, var(--c-blue) 100%);
+    color: #06222A;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(77, 208, 225, 0.35);
+}
+
+.btn-secondary {
+    background: transparent;
+    border-color: rgba(154, 167, 184, 0.35);
+    color: var(--t-primary);
+}
+
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    border-color: var(--c-cyan);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+/* 做功：唯一的"主动释放可用能"动作，用橙色与普通次要按钮区分 */
+.btn-work {
+    background: rgba(255, 159, 69, 0.12);
+    border-color: rgba(255, 159, 69, 0.55);
+    color: #FF9F45;
+}
+
+.btn-work:hover {
+    transform: translateY(-2px);
+    border-color: #FF9F45;
+    box-shadow: 0 6px 18px rgba(255, 159, 69, 0.28);
+}
+
+.btn-active {
+    border-color: var(--c-amber);
+    color: var(--c-amber);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.control-sliders {
+    margin-bottom: 14px;
+}
+
+.slider-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.slider-group label {
+    font-size: 13px;
+    color: var(--t-muted);
+    min-width: 92px;
+}
+
+.slider-group span {
+    font-family: var(--mono);
+    min-width: 52px;
+    text-align: right;
+    font-size: 13px;
+    color: var(--c-cyan);
+    font-variant-numeric: tabular-nums;
+}
+
+.shortcut-hint {
+    margin-top: 14px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: rgba(154, 167, 184, 0.7);
+}
+
+/* ---------------- 页面注释 / 致谢 ---------------- */
+
+.page-note {
+    grid-column: 1 / -1;               /* 跨 stats / control 两列 */
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px 24px;
+    margin-top: -4px;
+    padding: 12px 16px;
+    border-top: 1px dashed rgba(77, 208, 225, 0.16);
+}
+
+.page-note-body {
+    flex: 1 1 620px;
+    font-size: 12px;
+    line-height: 1.75;
+    color: rgba(154, 167, 184, 0.82);
+}
+
+.page-note-body strong,
+.def-item strong {
+    color: var(--c-cyan);
+    font-weight: 600;
+}
+
+/* 页面内提示"胜利色"时的示例色 */
+.victory-hint {
+    font-weight: 600;
+    color: var(--f-ok);
+}
+
+.page-note-head {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.page-note-title {
+    flex: 0 0 auto;
+    font-weight: 600;
+    color: var(--c-cyan);
+}
+
+.page-note-subtitle {
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: rgba(154, 167, 184, 0.7);
+}
+
+/* ---------------- 参数定义表 ---------------- */
+
+.def-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+    gap: 5px 26px;
+}
+
+.def-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.def-item dt {
+    flex: 0 0 auto;
+    min-width: 92px;
+    color: var(--c-cyan);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.def-item dd {
+    line-height: 1.7;
+    color: rgba(154, 167, 184, 0.72);
+}
+
+/* 公式用等宽字，与数字读数同字体 */
+.formula {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: rgba(214, 226, 238, 0.9);
+}
+
+.def-note {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(77, 208, 225, 0.1);
+    font-size: 11.5px;
+    line-height: 1.8;
+    color: rgba(154, 167, 184, 0.7);
+}
+
+.page-note-credit {
+    flex: 0 0 auto;
+    padding-left: 18px;
+    border-left: 1px solid rgba(77, 208, 225, 0.14);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    color: rgba(255, 193, 77, 0.88);
+}
+
+/* ---------------- 响应式 ---------------- */
+
+@media (max-width: 1024px) {
+    .footer {
+        grid-template-columns: 1fr;
+    }
+    .stats-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .header h1 { font-size: 20px; }
+    .canvas-wrapper { flex-direction: column; }
+    .accumulator-unit { width: 92px; height: 180px; }
+    .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .control-buttons { flex-direction: column; }
+    .slider-group { flex-wrap: wrap; }
+    .def-grid { grid-template-columns: 1fr; }
+    .def-item dt { min-width: 84px; }
+    .page-note-credit {
+        padding-left: 0;
+        border-left: none;
+    }
+}
